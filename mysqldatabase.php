@@ -63,6 +63,7 @@ class MySqlDatabase {
     const MYSQL_DATETIME_FORMAT = 'Y-m-d H:i:s';
     const INSERT_GET_AUTO_INCREMENT_ID = 1;
     const INSERT_GET_AFFECTED_ROWS = 2;
+    const DEFAULT_CHARSET = "utf8";
 
     /**
      *  Constructor
@@ -97,21 +98,23 @@ class MySqlDatabase {
      *  @param  boolean
      *  @return resource
      */
-    public function connect($host, $user, $password, $database = false, $persistant = false) {
-	if ($persistant) {
-	    $this->link = @mysql_pconnect($host, $user, $password);
-	} else {
-	    $this->link = @mysql_connect($host, $user, $password);
-	}
-	if (!$this->link) {
-	    throw new Exception("Unable to establish database connection: " . mysql_error());
-	}
-	if ($database) {
-	    $this->useDatabase($database);
-	}
-	$version = mysql_get_server_info();
-	$this->conn_str = "'{$database}' on '{$user}@{$host}' (MySQL {$version})";
-	return $this->link;
+    public function connect($host, $user, $password, $database = false, $persistant = false)
+    {
+		if ($persistant) {
+		    $this->link = @mysql_pconnect($host, $user, $password);
+		} else {
+		    $this->link = @mysql_connect($host, $user, $password);
+		}
+		if (!$this->link) {
+		    throw new Exception("Unable to establish database connection: " . mysql_error());
+		}
+		if ($database) {
+		    $this->useDatabase($database);
+		}
+		mysql_set_charset(MySqlDatabase::DEFAULT_CHARSET, $this->link);
+		$version = mysql_get_server_info();
+		$this->conn_str = "'$database' on '$user@$host' (MySQL $version)";
+		return $this->link;
     }
 
     /**
@@ -128,8 +131,9 @@ class MySqlDatabase {
      *  @param  string
      *  @return integer
      */
-    public function delete($query) {
-	return $this->updateOrDelete($query);
+    public function delete($query)
+    {
+		return $this->updateOrDelete($query);
     }
 
     /**
@@ -144,8 +148,9 @@ class MySqlDatabase {
      *
      *  @return string
      */
-    public function getConnectionString() {
-	return $this->conn_str;
+    public function getConnectionString()
+    {
+		return $this->conn_str;
     }
 
     /**
@@ -160,11 +165,12 @@ class MySqlDatabase {
      *
      *  @return MySqlDatabase
      */
-    public static function getInstance() {
-	if (!isset(self::$instance)) {
-	    self::$instance = new MySqlDatabase();
-	}
-	return self::$instance;
+    public static function getInstance()
+    {
+		if (!isset(self::$instance)) {
+		    self::$instance = new MySqlDatabase();
+		}
+		return self::$instance;
     }
 
     /**
@@ -185,12 +191,13 @@ class MySqlDatabase {
      *  @param  string
      *  @return array
      */
-    public function fetchOneFromEachRow($query) {
-	$rval = array();
-	foreach ($this->iterate($query, MySqlResultSet::DATA_NUMERIC_ARRAY) as $row) {
-	    $rval[] = $row[0];
-	}
-	return $rval;
+    public function fetchOneFromEachRow($query)
+    {
+		$rval = array();
+		foreach ($this->iterate($query, MySqlResultSet::DATA_NUMERIC_ARRAY) as $row) {
+		    $rval[] = $row[0];
+		}
+		return $rval;
     }
 
     /**
@@ -217,11 +224,12 @@ class MySqlDatabase {
      *  @param  integer
      *  @return mixed
      */
-    public function fetchOneRow($query, $data_type = MySqlResultSet::DATA_OBJECT) {
-	$result = new MySqlResultSet($query, $data_type, $this->link);
-	$result->rewind();
-	$row = $result->current();
-	return $row;
+    public function fetchOneRow($query, $data_type = MySqlResultSet::DATA_OBJECT)
+    {
+		$result = new MySqlResultSet($query, $data_type, $this->link);
+		$result->rewind();
+		$row = $result->current();
+		return $row;
     }
 
     /**
@@ -239,15 +247,16 @@ class MySqlDatabase {
      *  @param  string
      *  @return mixed
      */
-    public function fetchOne($query) {
-	$result = new MySqlResultSet($query, MySqlResultSet::DATA_NUMERIC_ARRAY, $this->link);
-	$result->rewind();
-	$row = $result->current();
-	if (!$row) {
-	    return false;
-	} else {
-	    return $row[0];
-	}
+    public function fetchOne($query)
+    {
+		$result = new MySqlResultSet($query, MySqlResultSet::DATA_NUMERIC_ARRAY, $this->link);
+		$result->rewind();
+		$row = $result->current();
+		if (!$row) {
+		    return false;
+		} else {
+		    return $row[0];
+		}
     }
 
     /**
@@ -293,68 +302,69 @@ class MySqlDatabase {
      *  @param  boolean
      *  @return integer
      */
-    public function importSqlFile($filename, $callback = false, $abort_on_error = true) {
-	if ($callback && !is_callable($callback)) {
-	    throw new Exception("Invalid callback function.");
-	}
-	$lines = $this->loadFile($filename);
-	$num_queries = 0;
-	$sql_line = 0;
-	$sql = '';
-	$in_comment = false;
-
-	foreach ($lines as $num => $line) {
-	    $line = trim($line);
-	    $num++;
-	    if (empty($sql))
-		$sql_line = $num;
-	    // ignore comments
-	    if ($in_comment) {
-		$comment = strpos($line, '*/');
-		if ($comment !== false) {
-		    $in_comment = false;
-		    $line = substr($line, $comment + 2);
-		} else {
-		    continue;
+    public function importSqlFile($filename, $callback = false, $abort_on_error = true)
+    {
+		if ($callback && !is_callable($callback)) {
+		    throw new Exception("Invalid callback function.");
 		}
-	    } else {
-		$comment = strpos($line, '/*');
-		if ($comment !== false) {
-		    if (strpos($line, '*/') === false) {
-			$in_comment = true;
-		    }
-		    $line = substr($line, 0, $comment);
-		} else {
-		    // single line comments
-		    foreach (array('-- ', '#') as $chars) {
-			$comment = strpos($line, $chars);
-			if ($comment !== false) {
-			    $line = substr($line, 0, $comment);
+		$lines = $this->loadFile($filename);
+		$num_queries = 0;
+		$sql_line = 0;
+		$sql = '';
+		$in_comment = false;
+	
+		foreach ($lines as $num => $line) {
+		    $line = trim($line);
+		    $num++;
+		    if (empty($sql))
+				$sql_line = $num;
+		    // ignore comments
+		    if ($in_comment) {
+				$comment = strpos($line, '*/');
+				if ($comment !== false) {
+				    $in_comment = false;
+				    $line = substr($line, $comment + 2);
+				} else {
+				    continue;
+				}
+		    } else {
+				$comment = strpos($line, '/*');
+				if ($comment !== false) {
+				    if (strpos($line, '*/') === false) {
+						$in_comment = true;
+				    }
+				    $line = substr($line, 0, $comment);
+				} else {
+				    // single line comments
+				    foreach (array('-- ', '#') as $chars) {
+						$comment = strpos($line, $chars);
+						if ($comment !== false) {
+						    $line = substr($line, 0, $comment);
+						}
+					}
+				}
 			}
+	
+		    // check if the statement is ready to be queried
+		    $end = strpos($line, ';');
+		    if ($end === false) {
+				$sql .= $line;
+		    } else {
+				$sql .= substr($line, 0, $end);
+				$result = $this->quickQuery($sql);
+				$num_queries++;
+				if (!$result && $abort_on_error) {
+				    $file = basename($filename);
+				    $error = mysql_error($this->link);
+				    throw new Exception("Error in $file on line $sql_line: $error");
+				}
+				if ($callback) {
+				    call_user_func($callback, $sql_line, $sql, $result);
+				}
+				$sql = '';  // clear for next statement
 		    }
 		}
-	    }
-
-	    // check if the statement is ready to be queried
-	    $end = strpos($line, ';');
-	    if ($end === false) {
-		$sql .= $line;
-	    } else {
-		$sql .= substr($line, 0, $end);
-		$result = $this->quickQuery($sql);
-		$num_queries++;
-		if (!$result && $abort_on_error) {
-		    $file = basename($filename);
-		    $error = mysql_error($this->link);
-		    throw new Exception("Error in $file on line $sql_line: $error");
-		}
-		if ($callback) {
-		    call_user_func($callback, $sql_line, $sql, $result);
-		}
-		$sql = '';  // clear for next statement
-	    }
-	}
-	return $num_queries;
+		return $num_queries;
     }
 
     /**
@@ -364,12 +374,13 @@ class MySqlDatabase {
      *
      *  @return boolean
      */
-    public function isConnected() {
-	if (!empty($this->link)) {
-	    return @mysql_ping($this->link);
-	} else {
-	    return false;
-	}
+    public function isConnected()
+    {
+		if (!empty($this->link)) {
+		    return @mysql_ping($this->link);
+		} else {
+		    return false;
+		}
     }
 
     // insertPhpArray
@@ -396,13 +407,14 @@ class MySqlDatabase {
      *  @param  integer
      *  @return integer
      */
-    public function insert($query, $returnType = MySqlDatabase::INSERT_GET_AUTO_INCREMENT_ID) {
-	$return = $this->query($query);
-	if ($returnType == MySqlDatabase::INSERT_GET_AFFECTED_ROWS) {
-	    return @mysql_affected_rows($this->link);
-	} else {
-	    return @mysql_insert_id($this->link);
-	}
+    public function insert($query, $returnType = MySqlDatabase::INSERT_GET_AUTO_INCREMENT_ID)
+    {
+		$return = $this->query($query);
+		if ($returnType == MySqlDatabase::INSERT_GET_AFFECTED_ROWS) {
+		    return @mysql_affected_rows($this->link);
+		} else {
+		    return @mysql_insert_id($this->link);
+		}
     }
 
     /**
@@ -416,47 +428,48 @@ class MySqlDatabase {
      *  @param array|string
      *  @param array|string
      */
-    public function smartInsert($table, $columns, $values) {
-	if (empty($table) || !is_string($table)) {
-	    throw new Exception("The \$table parameter must be specified as a string.");
-	}
-	$table = "`" . @mysql_real_escape_string($table) . "`";
-	$query = "INSERT INTO {$table} ";
-	// columns
-	if (is_string($columns)) {
-	    $columns = explode(",", $columns);
-	}
-	if (is_array($columns)) {
-	    foreach ($columns as &$col) {
-		if (!is_string($col)) {
-		    throw new Exception("The \$columns parameter must be a string or an array of strings");
+    public function smartInsert($table, $columns, $values)
+    {
+		if (empty($table) || !is_string($table)) {
+		    throw new Exception("The \$table parameter must be specified as a string.");
 		}
-		$col = @mysql_real_escape_string($col);
-	    }
-	} else {
-	    throw new Exception("The \$columns parameter must be a string or an array of strings.");
-	}
-	$query .= "(" . implode(",", $columns) . ") ";
-
-	// values
-	if (is_string($values)) {
-	    $values = explode(",", $values);
-	}
-	if (is_array($values)) {
-	    foreach ($values as &$value) {
-		if (!is_string($value)) {
-		    throw new Exception("The \$values parameter must be a string or an array of strings");
+		$table = "`" . @mysql_real_escape_string($table) . "`";
+		$query = "INSERT INTO {$table} ";
+		// columns
+		if (is_string($columns)) {
+		    $columns = explode(",", $columns);
 		}
-		$value = @mysql_real_escape_string($value);
-	    }
-	} else {
-	    throw new Exception("The \$values parameter must be a string or an array of strings.");
-	}
-	if (isset($columns) && (count($columns) != 0) && (count($columns) <> count($values))) {
-	    throw new Exception("Column count ({$column_count}) does not match values count ({$value_count}).");
-	}
-	$query .= "VALUES ('" . implode("', '", $values) . "') ";
-	$this->insert($query);
+		if (is_array($columns)) {
+		    foreach ($columns as &$col) {
+				if (!is_string($col)) {
+				    throw new Exception("The \$columns parameter must be a string or an array of strings");
+				}
+				$col = @mysql_real_escape_string($col);
+		    }
+		} else {
+		    throw new Exception("The \$columns parameter must be a string or an array of strings.");
+		}
+		$query .= "(" . implode(",", $columns) . ") ";
+	
+		// values
+		if (is_string($values)) {
+		    $values = explode(",", $values);
+		}
+		if (is_array($values)) {
+		    foreach ($values as &$value) {
+				if (!is_string($value)) {
+				    throw new Exception("The \$values parameter must be a string or an array of strings");
+				}
+				$value = @mysql_real_escape_string($value);
+		    }
+		} else {
+		    throw new Exception("The \$values parameter must be a string or an array of strings.");
+		}
+		if (isset($columns) && (count($columns) != 0) && (count($columns) <> count($values))) {
+		    throw new Exception("Column count ({$column_count}) does not match values count ({$value_count}).");
+		}
+		$query .= "VALUES ('" . implode("', '", $values) . "') ";
+		$this->insert($query);
     }
 
     /**
@@ -487,8 +500,9 @@ class MySqlDatabase {
      *  @param  integer
      *  @return boolean
      */
-    public function iterate($sql, $data_type = MySqlResultSet::DATA_OBJECT) {
-	return new MySqlResultSet($sql, $data_type, $this->link);
+    public function iterate($sql, $data_type = MySqlResultSet::DATA_OBJECT)
+    {
+		return new MySqlResultSet($sql, $data_type, $this->link);
     }
 
     /**
@@ -500,23 +514,25 @@ class MySqlDatabase {
      *  @param  string
      *  @return boolean
      */
-    private function loadFile($filename) {
-	if (!file_exists($filename)) {
-	    throw new Exception("File does not exist: {$filename}");
+    private function loadFile($filename)
+    {
+		if (!file_exists($filename)) {
+		    throw new Exception("File does not exist: {$filename}");
+		}
+		$file = @file($filename, FILE_IGNORE_NEW_LINES);
+		if (!$file) {
+		    throw new Exception("Could not open {$filename}");
+		}
+		return $file;
 	}
-	$file = @file($filename, FILE_IGNORE_NEW_LINES);
-	if (!$file) {
-	    throw new Exception("Could not open {$filename}");
-	}
-	return $file;
-    }
-
-    public function query($query) {
-	$r = @mysql_query($query, $this->link);
-	if (!$r) {
-	    throw new Exception("Query Error: " . mysql_error());
-	}
-	return $r;
+	
+	public function query($query)
+	{
+		$r = @mysql_query($query, $this->link);
+		if (!$r) {
+		    throw new Exception("Query Error: " . mysql_error());
+		}
+		return $r;
     }
 
     /**
@@ -531,13 +547,14 @@ class MySqlDatabase {
      *  @param  string
      *  @return boolean
      */
-    public function quickQuery($query) {
-	$r = @mysql_query($query, $this->link);
-	if (!$r)
-	    return false;
-	if (is_resource($r))
-	    mysql_free_result($r);
-	return true;
+    public function quickQuery($query)
+    {
+		$r = @mysql_query($query, $this->link);
+		if (!$r)
+		    return false;
+		if (is_resource($r))
+		    mysql_free_result($r);
+		return true;
     }
 
     /**
@@ -554,13 +571,15 @@ class MySqlDatabase {
      *  @param  string
      *  @return integer
      */
-    public function update($query) {
-	return $this->updateOrDelete($query);
+    public function update($query)
+    {
+		return $this->updateOrDelete($query);
     }
 
-    private function updateOrDelete($query) {
-	$r = $this->query($query);
-	return @mysql_affected_rows($this->link);
+    private function updateOrDelete($query)
+    {
+		$r = $this->query($query);
+		return @mysql_affected_rows($this->link);
     }
 
     /**
@@ -576,14 +595,15 @@ class MySqlDatabase {
      *  @param  string
      *  @return integer
      */
-    public function useDatabase($database) {
-	if ($this->selectedDB !== $database) {
-	    if (!@mysql_select_db($database, $this->link)) {
-		throw new Exception("Unable to select database: " . mysql_error($this->link));
-	    } else {
-		$this->selectedDB = $database;
-	    }
-	}
+    public function useDatabase($database)
+    {
+		if ($this->selectedDB !== $database) {
+		    if (!@mysql_select_db($database, $this->link)) {
+				throw new Exception("Unable to select database: " . mysql_error($this->link));
+		    } else {
+				$this->selectedDB = $database;
+		    }
+		}
     }
 
 }

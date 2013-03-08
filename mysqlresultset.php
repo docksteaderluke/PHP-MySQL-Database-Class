@@ -91,8 +91,7 @@ class MySqlResultSet implements Iterator
      *  @param  string
      *  @param  integer
      */
-    public function __construct($query, $data_type=MySqlResultSet::DATA_OBJECT, 
-                                $link=false) 
+    public function __construct($query, $data_type=MySqlResultSet::DATA_OBJECT, $link=false) 
     {
         if ($link) $this->result = @mysql_query($query, $link);
         else $this->result = @mysql_query($query);
@@ -153,8 +152,7 @@ class MySqlResultSet implements Iterator
     
     public function isEmpty()
     {
-        if ($this->num_rows == 0) return true;
-        else return false;
+    	return ($this->num_rows == 0 ? true : false);
     }
     
     /**
@@ -219,5 +217,10 @@ class MySqlResultSet implements Iterator
        if ($this->row === false) return false;
        else return true;
     }
+    
+    function toArray()
+    {
+		return iterator_to_array($this);
+	}
 }
 ?>
