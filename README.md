@@ -1,7 +1,7 @@
 PHP MySQL Database Class
 ========================
 
-Copyright (c) 2011 Micah Carrick
+Copyright &copy; 2011 Micah Carrick
 All Rights Reserved.
 
 PHP MySQL Database Class is singleton pattern object which serves as a MySQL 
