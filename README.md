@@ -16,6 +16,7 @@ the source code or visit http://www.micahcarrick.com/php5-mysql-database-class.h
 
 Here are some simple examples:
 
+```php
 // get the database singleton instance
 $db = MySqlDatabase::getInstance();
 
@@ -38,3 +39,4 @@ $count = $db->fetchOne("SELECT COUNT(*) FROM foo");
 // import from a file (use with caution!)
 $num = $db->importSqlFile('test-data.sql');
 echo "Imported <strong>$num</strong> statements.<br/>";
+```
